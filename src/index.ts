@@ -54,7 +54,7 @@ client.on(Events.MessageCreate, async (message) => {
       return;
     }
 
-    const { botResponse } = await response.json();
+    const { taskId, botResponse } = await response.json();
 
     console.log("botResponse: ", botResponse);
 
