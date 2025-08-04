@@ -25,6 +25,9 @@ client.on(Events.MessageCreate, async (message) => {
   // Ignore messages from other bots to prevent loops
   if (message.author.bot) return;
 
+  // Ignore messages from DM
+  if (!message.guild) return;
+
   // Optional: Add logic here to only respond in certain channels
   // or if the bot is @mentioned. For now, it responds to everything.
 
