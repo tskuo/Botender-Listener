@@ -56,6 +56,8 @@ client.on(Events.MessageCreate, async (message) => {
 
     const { botResponse } = await response.json();
 
+    console.log("botResponse: ", botResponse);
+
     // If the bot logic generated a response, send it to the channel
     if (botResponse && botResponse.trim() !== "") {
       await message.channel.send(botResponse);
