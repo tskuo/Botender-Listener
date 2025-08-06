@@ -64,12 +64,11 @@ client.on(Events.MessageCreate, async (message) => {
 
     // If the bot logic generated a response, reply to the original message
     if (botResponse && botResponse.trim() !== "") {
-      let replyContent = "";
+      let replyContent = botResponse;
       if (taskName && taskName.trim() !== "") {
-        // Prepend task information with less prominent styling
-        replyContent = `> Task triggered: ${taskName}\n\n`;
+        // Append task information with less prominent styling
+        replyContent += `\n\n> Task triggered: ${taskName}`;
       }
-      replyContent += botResponse;
       await message.reply(replyContent);
     }
   } catch (error) {
