@@ -54,13 +54,23 @@ client.on(Events.MessageCreate, async (message) => {
       return;
     }
 
-    const { taskId, botResponse } = await response.json();
+    const { taskId, taskName, botResponse } = await response.json();
 
-    console.log("botResponse: ", botResponse);
+    console.log(
+      `[${message.guild.name}] #${
+        (message.channel as any).name
+      }: Bot responded "${botResponse}" (Task: ${taskName})`
+    );
 
-    // If the bot logic generated a response, send it to the channel
+    // If the bot logic generated a response, reply to the original message
     if (botResponse && botResponse.trim() !== "") {
-      await message.channel.send(botResponse);
+      let replyContent = "";
+      if (taskName && taskName.trim() !== "") {
+        // Prepend task information with less prominent styling
+        replyContent = `> Task triggered: ${taskName}\n\n`;
+      }
+      replyContent += botResponse;
+      await message.reply(replyContent);
     }
   } catch (error) {
     console.error("Failed to process message:", error);
