@@ -100,16 +100,25 @@ client.on(Events.GuildCreate, async (guild) => {
 
       // Send a welcome message to the new channel
       try {
-        const welcomeMessage = `👋 Hello! This is the \`#botender\` channel.
-        
-🔐 **Permissions:**
-- Currently, only server administrators and I can see this channel.
-- Right now, I will only respond to messages sent here. To allow me to work in other channels, please update my permissions in those specific channels to grant me \`View Channel\`, \`Send Messages\`, and \`Read Message History\`.
+        const welcomeMessage = `👋 Hey there! I'm Botender, your friendly AI assistant!
+
+🙂 **Who I Am:**
+- I'm an AI bot here to reply user messages on Discord servers.
+- I'm super customizable! You get to decide when and how I respond, based on what works best for your community.
+- By default, just say "hello to botender" in this channel and I'll reply! Give it a try!
 
 🔮 **How I Work:**
-- You can see what I can do by visiting my website: ${VERCEL_URL}
-- By default, I'm set up to respond if you say "hello to botender" in this channel.
-- You and your team can collaboratively propose, edit, and deploy new tasks for me right from the website. I'll post updates about new proposals and task deployments right here.`;
+- Behind the scenes, I'm set up with a default \`task\` called Hello Botender, consisting of a \`trigger\` (what activates me) and an \`aciton\` (what you want me to do).
+- You and your team can easily view, propose, edit, and deploy tasks through my website (${VERCEL_URL}). Whenever there are updates, like new proposals or task changes, I'll let you know right here!
+- Please note: I can only read and process one message at a time, so I respond based on individual messages, not full conversations... yet! This might change in the future, so stay tuned!
+
+🔐 **Permissions:**
+- Right now, only server admins (and me!) can access this channel. Anyone with access here can also use the website to change my tasks. If you'd like, you can invite more people to this channel.
+- I'll only reply to messages in this channel for now. If you want me to help out in other places, just make sure I have the \`View Channel\`, \`Send Messages\`, and \`Read Message History\` permissions in those channels.
+- And don't forget—if you want me to do something new in another channel, just start a proposal to create a new task so I know what to do there!
+
+I'm excited to be here and can't wait to help your community however I can!`;
+
         await newChannel.send(welcomeMessage);
       } catch (messageError) {
         console.error(
