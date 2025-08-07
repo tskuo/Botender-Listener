@@ -1,24 +1,149 @@
 import "dotenv/config";
-import { Client, Events, GatewayIntentBits } from "discord.js";
+import {
+  Client,
+  Events,
+  GatewayIntentBits,
+  ChannelType,
+  PermissionFlagsBits,
+  Guild,
+} from "discord.js";
 import fetch from "cross-fetch";
 
-const VERCEL_API_URL = process.env.VERCEL_API_URL;
+const VERCEL_URL = process.env.VERCEL_URL;
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
-if (!VERCEL_API_URL || !DISCORD_TOKEN) {
-  throw new Error("Missing VERCEL_API_URL or DISCORD_TOKEN in .env file");
+if (!VERCEL_URL || !DISCORD_TOKEN) {
+  throw new Error("Missing VERCEL_URL or DISCORD_TOKEN in .env file");
 }
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // This is the crucial intent
+    GatewayIntentBits.MessageContent,
   ],
 });
 
 client.once(Events.ClientReady, (c) => {
   console.log(`✅ Listener is ready! Logged in as ${c.user.tag}`);
+});
+
+client.on(Events.GuildCreate, async (guild) => {
+  console.log(`Joined a new server: ${guild.name} (ID: ${guild.id})`);
+
+  const channelName = "botender";
+  const communityTone = `A Discord server where people come together with something in common. The community includes both newcomers and long-time members. The tone is generally friendly and collaborative, though discussions can sometimes become heated. Members aim to foster a welcoming and engaged environment. This is not necessarily a gaming community, but a shared space for people with a common interest or connection.`;
+  // Check if the channel already exists
+  const existingChannel = guild.channels.cache.find(
+    (channel) =>
+      channel.name === channelName && channel.type === ChannelType.GuildText
+  );
+
+  if (!existingChannel) {
+    console.log(
+      `Channel #${channelName} not found in ${guild.name}, creating it...`
+    );
+    try {
+      const me = guild.members.me;
+      if (!me) {
+        // This should not happen, but good to be safe
+        console.error(
+          `Could not find my own member object in guild ${guild.name}`
+        );
+        return;
+      }
+
+      // Find all roles with Administrator permission
+      const adminRoles = guild.roles.cache.filter((role) =>
+        role.permissions.has("Administrator")
+      );
+
+      const permissionOverwrites = [
+        // Deny @everyone to view this channel
+        {
+          id: guild.roles.everyone.id,
+          deny: [PermissionFlagsBits.ViewChannel],
+        },
+        // Allow the bot to view and send messages
+        {
+          id: me.id,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.SendMessagesInThreads,
+            PermissionFlagsBits.CreatePublicThreads,
+            PermissionFlagsBits.CreatePrivateThreads,
+            PermissionFlagsBits.ReadMessageHistory,
+          ],
+        },
+        // Allow all admin roles to view, send, and manage messages
+        ...adminRoles.map((role) => ({
+          id: role.id,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.SendMessagesInThreads,
+            PermissionFlagsBits.ManageMessages,
+          ],
+        })),
+      ];
+
+      const newChannel = await guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildText,
+        topic: "A dedicated channel for all things Botender.",
+        permissionOverwrites,
+      });
+      console.log(
+        `Channel #${channelName} created successfully in ${guild.name}.`
+      );
+
+      // Send a welcome message to the new channel
+      try {
+        const welcomeMessage = `👋 Hello! This is the \`#botender\` channel.
+        
+🔐 **Permissions:**
+- Currently, only server administrators and I can see this channel.
+- Right now, I will only respond to messages sent here. To allow me to work in other channels, please update my permissions in those specific channels to grant me \`View Channel\`, \`Send Messages\`, and \`Read Message History\`.
+
+🔮 **How I Work:**
+- You can see what I can do by visiting my website: ${VERCEL_URL}
+- By default, I'm set up to respond if you say "hello to botender" in this channel.
+- You and your team can collaboratively propose, edit, and deploy new tasks for me right from the website. I'll post updates about new proposals and task deployments right here.`;
+        await newChannel.send(welcomeMessage);
+      } catch (messageError) {
+        console.error(
+          `Failed to send welcome message to #${channelName} in ${guild.name}:`,
+          messageError
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Failed to create #${channelName} in ${guild.name}:`,
+        error
+      );
+      // Try to inform the server owner if channel creation fails
+      try {
+        const owner = await guild.fetchOwner();
+        await owner.send(
+          `Hello! I tried to create a \`#${channelName}\` channel in your server, "${guild.name}", but I seem to be missing the 'Manage Channels' permission. Please grant me this permission to get the most out of me!`
+        );
+      } catch (dmError) {
+        console.error(`Failed to DM the owner of ${guild.name}.`, dmError);
+      }
+    }
+  } else {
+    console.log(`Channel #${channelName} already exists in ${guild.name}.`);
+  }
+
+  const response = await fetch(`${VERCEL_URL}/api/guilds/${guild.id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      channels: [channelName],
+      community_tone: communityTone,
+    }),
+  });
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -28,23 +153,42 @@ client.on(Events.MessageCreate, async (message) => {
   // Ignore messages from DM
   if (!message.guild) return;
 
-  // Optional: Add logic here to only respond in certain channels
-  // or if the bot is @mentioned. For now, it responds to everything.
-
-  console.log(
-    `[${message.guild.name}] #${(message.channel as any).name}: ${
-      message.author.username
-    } said "${message.content}"`
-  );
-
   try {
+    // Fetch allowed channels from your API
+    const guildId = message.guild.id;
+    const guildInfoResponse = await fetch(
+      `${VERCEL_URL}/api/guilds/${guildId}`
+    );
+
+    if (!guildInfoResponse.ok) {
+      console.error(
+        `Failed to fetch guild info for ${guildId}:`,
+        await guildInfoResponse.text()
+      );
+      return; // Don't proceed if we can't get guild info
+    }
+
+    const guildInfo = await guildInfoResponse.json();
+    // Assuming the API returns a `channel` array with the names of allowed channels
+    const allowedChannels = guildInfo.channels || [];
+    const currentChannelName = (message.channel as any).name;
+
+    // Check if the bot should listen to this channel
+    if (!allowedChannels.includes(currentChannelName)) {
+      return; // Not an allowed channel, so ignore the message
+    }
+
+    console.log(
+      `[${message.guild.name}] #${currentChannelName}: ${message.author.username} said "${message.content}"`
+    );
+
     // Call your SvelteKit API on Vercel
-    const response = await fetch(VERCEL_API_URL, {
+    const response = await fetch(`${VERCEL_URL}/api/discordBot`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         guildId: message.guildId,
-        channel: (message.channel as any).name ?? "unknown-channel",
+        channel: currentChannelName ?? "unknown-channel",
         userMessage: message.content,
       }),
     });
@@ -74,6 +218,93 @@ client.on(Events.MessageCreate, async (message) => {
   } catch (error) {
     console.error("Failed to process message:", error);
   }
+});
+
+/**
+ * Retrieves a list of all text channels in a guild where the bot has permission to view and send messages.
+ * @param {Guild} guild The guild to check for accessible channels.
+ * @returns {string[]} An array of channel names.
+ */
+function getAccessibleTextChannels(guild: Guild): string[] {
+  const me = guild.members.me;
+  if (!me) {
+    console.error(`Could not find my own member object in guild ${guild.name}`);
+    return [];
+  }
+  return guild.channels.cache
+    .filter(
+      (channel) =>
+        channel.type === ChannelType.GuildText &&
+        channel.permissionsFor(me)?.has(PermissionFlagsBits.ViewChannel) &&
+        channel.permissionsFor(me)?.has(PermissionFlagsBits.SendMessages)
+    )
+    .map((channel) => channel.name);
+}
+
+/**
+ * Sends a PATCH request to the Vercel API to update the list of accessible channels for a guild.
+ * @param {Guild} guild The guild to update.
+ */
+async function updateGuildChannels(guild: Guild) {
+  const accessibleChannels = getAccessibleTextChannels(guild);
+  console.log(
+    `Updating accessible channels for ${guild.name}:`,
+    accessibleChannels
+  );
+  try {
+    const response = await fetch(`${VERCEL_URL}/api/guilds/${guild.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channels: accessibleChannels }),
+    });
+    if (!response.ok) {
+      console.error(
+        `API call to PATCH guild ${guild.id} failed:`,
+        await response.text()
+      );
+    } else {
+      console.log(`Successfully updated channels for guild ${guild.name}.`);
+    }
+  } catch (error) {
+    console.error(
+      `Failed to PATCH accessible channels for guild ${guild.name}:`,
+      error
+    );
+  }
+}
+
+// --- Event Listeners for Permission Changes ---
+
+client.on(Events.ChannelCreate, (channel) => {
+  if (channel.guild) {
+    console.log(
+      `Channel created in ${channel.guild.name}, updating channels...`
+    );
+    updateGuildChannels(channel.guild);
+  }
+});
+
+client.on(Events.ChannelDelete, (channel) => {
+  if ("guild" in channel && channel.guild) {
+    console.log(
+      `Channel deleted in ${channel.guild.name}, updating channels...`
+    );
+    updateGuildChannels(channel.guild);
+  }
+});
+
+client.on(Events.ChannelUpdate, (oldChannel, newChannel) => {
+  if ("guild" in newChannel && newChannel.guild) {
+    console.log(
+      `Channel updated in ${newChannel.guild.name}, updating channels...`
+    );
+    updateGuildChannels(newChannel.guild);
+  }
+});
+
+client.on(Events.GuildRoleUpdate, (oldRole, newRole) => {
+  console.log(`Role updated in ${newRole.guild.name}, updating channels...`);
+  updateGuildChannels(newRole.guild);
 });
 
 client.login(DISCORD_TOKEN);
