@@ -103,12 +103,12 @@ client.on(Events.GuildCreate, async (guild) => {
         const welcomeMessage = `👋 Hey there! I'm Botender, your friendly AI assistant!
 
 🙂 **Who I Am:**
-- I'm an AI bot here to reply user messages on Discord servers.
+- I'm an AI bot designed to respond to user messages on Discord servers.
 - I'm super customizable! You get to decide when and how I respond, based on what works best for your community.
 - By default, just say "hello to botender" in this channel and I'll reply! Give it a try!
 
 🔮 **How I Work:**
-- Behind the scenes, I'm set up with a default \`task\` called Hello Botender, consisting of a \`trigger\` (what activates me) and an \`aciton\` (what you want me to do).
+- Behind the scenes, I'm set up with a default \`task\` called Hello Botender, consisting of a \`trigger\` (what activates me) and an \`action\` (what you want me to do).
 - You and your team can easily view, propose, edit, and deploy tasks through my website (${VERCEL_URL}). Whenever there are updates, like new proposals or task changes, I'll let you know right here!
 - Please note: I can only read and process one message at a time, so I respond based on individual messages, not full conversations... yet! This might change in the future, so stay tuned!
 
