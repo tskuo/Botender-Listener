@@ -33,6 +33,7 @@ client.on(Events.GuildCreate, async (guild) => {
 
   const channelName = "botender";
   const communityTone = `A Discord server where people come together with something in common. The community includes both newcomers and long-time members. The tone is generally friendly and collaborative, though discussions can sometimes become heated. Members aim to foster a welcoming and engaged environment. This is not necessarily a gaming community, but a shared space for people with a common interest or connection.`;
+  const deploy_threshold = 3;
   // Check if the channel already exists
   const existingChannel = guild.channels.cache.find(
     (channel) =>
@@ -151,6 +152,7 @@ I'm excited to be here and can't wait to help your community however I can!`;
     body: JSON.stringify({
       channels: [channelName],
       community_tone: communityTone,
+      deploy_threshold: deploy_threshold,
     }),
   });
 });
