@@ -260,10 +260,10 @@ client.on(Events.MessageCreate, async (message) => {
         );
 
         if (discussionResponse.ok) {
+          const { message: responseMessage } = await discussionResponse.json();
           console.log(
-            `Successfully logged discussion for thread ${message.channel.id}`
+            `Logged discussion for thread ${message.channel.id}: ${responseMessage}`
           );
-          // Continue to the next block to process as a regular message
         } else {
           console.error(
             "API call to /api/discussions failed:",
