@@ -194,7 +194,10 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     // If we couldn't determine a valid channel name, or if it's not in the allowed list, ignore the message.
-    if (!effectiveChannelName || !allowedChannels.includes(effectiveChannelName)) {
+    if (
+      !effectiveChannelName ||
+      !allowedChannels.includes(effectiveChannelName)
+    ) {
       return;
     }
 
@@ -234,6 +237,44 @@ client.on(Events.MessageCreate, async (message) => {
         replyContent += `\n\n> Task triggered: ${taskName}`;
       }
       await message.reply(replyContent);
+    }
+
+    // If the message is a discussion in a thread under the #botender channel
+    if (message.channel.isThread() && effectiveChannelName === "botender") {
+      console.log(
+        `[${message.guild.name}] #${effectiveChannelName}: Capturing discussion in thread ${message.channel.id}`
+      );
+
+      try {
+        const discussionResponse = await fetch(
+          `${VERCEL_URL}/api/guilds/${guildId}/discussions`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              threadId: message.channel.id,
+              authorId: message.author.id,
+              content: message.content,
+            }),
+          }
+        );
+
+        if (discussionResponse.ok) {
+          console.log(
+            `Successfully logged discussion for thread ${message.channel.id}`
+          );
+          // Continue to the next block to process as a regular message
+        } else {
+          console.error(
+            "API call to /api/discussions failed:",
+            await discussionResponse.text()
+          );
+          // Continue to the next block to process as a regular message
+        }
+      } catch (error) {
+        console.error("Failed to post discussion to API:", error);
+        // Continue to the next block to process as a regular message
+      }
     }
   } catch (error) {
     console.error("Failed to process message:", error);
