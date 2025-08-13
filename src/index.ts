@@ -180,17 +180,26 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     const guildInfo = await guildInfoResponse.json();
-    // Assuming the API returns a `channel` array with the names of allowed channels
     const allowedChannels = guildInfo.channels || [];
-    const currentChannelName = (message.channel as any).name;
 
-    // Check if the bot should listen to this channel
-    if (!allowedChannels.includes(currentChannelName)) {
-      return; // Not an allowed channel, so ignore the message
+    let effectiveChannelName: string | null = null;
+
+    // Check if the message is in a thread or a regular text channel
+    if (message.channel.isThread()) {
+      // If it's a thread, use the parent channel's name for the check
+      effectiveChannelName = message.channel.parent?.name ?? null;
+    } else if (message.channel.type === ChannelType.GuildText) {
+      // If it's a regular channel, use its own name
+      effectiveChannelName = message.channel.name;
+    }
+
+    // If we couldn't determine a valid channel name, or if it's not in the allowed list, ignore the message.
+    if (!effectiveChannelName || !allowedChannels.includes(effectiveChannelName)) {
+      return;
     }
 
     console.log(
-      `[${message.guild.name}] #${currentChannelName}: ${message.author.username} said "${message.content}"`
+      `[${message.guild.name}] #${effectiveChannelName}: ${message.author.username} said "${message.content}"`
     );
 
     // Call your SvelteKit API on Vercel
@@ -199,7 +208,7 @@ client.on(Events.MessageCreate, async (message) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         guildId: message.guildId,
-        channel: currentChannelName ?? "unknown-channel",
+        channel: effectiveChannelName,
         userMessage: message.content,
       }),
     });
